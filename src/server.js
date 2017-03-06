@@ -28,7 +28,7 @@ const onJoined = (sock) => {
 const onUpdate = (sock) => {
   const socket = sock;
   socket.on('sandToServer', (data) => {
-    data.color = 'lightpink';
+    //data.color = 'lightpink';
     socket.broadcast.to('room1').emit('broadcastSand', data);
   });
 };
