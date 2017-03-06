@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/babel">
+    ()=>{ //IIFE
+      "use strict"
+      //GLOBALS
+      let socket;
+      let ctx;
+      let canvas;
+      
+      const sandArray = [];
+      let dragging;
+      
+      /*
+      const ExampleMethodDefinedAbove=()=>{
+        //do stuff, change screen, change arrays
+        socket.emit('exampleONonServer', {object: object});
+      }
+      */
+      
+      /*
+        handler methods
+        
+        call setup method in init after join
+        in set up give server info about unique client 
+      */
+      
+      const doMousedown = (e) =>{
+        dragging = true;
+        var mouse = getMouse(e);
+          dropSand(mouse);
+      };
+      const doMousemove = (e) => {
+        if(!dragging)
+          return;
+          var mouse = getMouse(e);
+          dropSand(mouse);
+      };
+      const doMouseup = () =>{
+        dragging = false;
+      }
+      const doMouseout = () =>{
+        dragging = false;
+      }
+      
+      const dropSand = (mouse) => {
+        const particle = {
+          width: 2,
+          height: 2,
+          x: mouse.x,
+          y: mouse.y,
+          color: 'wheat',
+          colliding: false,
+        };
+        sandArray.push(particle);
+        socket.emit('sandToServer', particle);
+      };
+      
+      const moveSand = () =>{
+        
+        for(let i = 0; i < sandArray.length; i++){
+          
+          //resest colliding to false
+          sandArray[i].colliding = false;
+          //check all collisions
+          for(let j = 0; j < sandArray.length; j++){
+            //don't check same particle against itself           
+            if(i != j){
+              if(isColliding(sandArray[i], sandArray[j])){
+                  sandArray[i].colliding = true;
+              }              
+            }
+          }
+          if(sandArray[i].colliding === false){
+            if(sandArray[i].y < 280){
+              sandArray[i].y+=4;
+            }
+          }         
+        }
+      };
+      
+      const isColliding = (p1, p2) =>{
+        if( p1.x < p2.x+p2.width &&
+            p1.x+p1.width > p2.x &&
+            p1.y < p2.y+p2.height &&
+            p1.y+p1.height > p2.y &&
+            p1.y < p2.y ){
+            //console.log('collision');  
+            return true;       
+        }
+        
+      };
+      
+      const drawSand = () =>{
+        //clear canvas 
+        ctx.fillStyle = '#597686';
+        ctx.fillRect(0,0,500,500);
+        for(let i = 0; i < sandArray.length; i++){
+          const s = sandArray[i];
+          //ctx.strokeStyle = 'black';
+          //ctx.lineWidth='1';
+          ctx.fillStyle = s.color;
+          ctx.fillRect(s.x,s.y,s.width,s.height);
+
+        }
+      };
+      
+      const getMouse = (e)=>{
+		var mouse = {}
+		mouse.x = e.pageX - e.target.offsetLeft;
+		mouse.y = e.pageY - e.target.offsetTop;
+		return mouse;
+      }
+      
+      const init = () => {
+        socket = io.connect();
+        canvas = document.querySelector("#canvas");
+        ctx = canvas.getContext("2d");
+        
+        //CONNECT
+        socket.on('connect', () => {
+          socket.emit('join');
+          
+          canvas.onmousedown = doMousedown;
+          canvas.onmousemove = doMousemove;
+          canvas.onmouseup = doMouseup;
+          canvas.onmouseout = doMouseout;
+          
+          setInterval( ()=>{
+            moveSand();
+            drawSand();
+          },(50));  
+          
+        });
+        socket.on('broadcastSand', (data)=>{
+          sandArray.push(data);
+        })
+        //set up socket.on other calls from server
+        /*EXAMPLE
+        socket.on('examlpe', (data)=>{
+          ExampleMethodDefinedAbove();
+        });
+        */
+        
+      };
+      
+      
+      window.onload = init;
+      
+    }(); //END IIFE    
+    </script>
+    <style></style>
+  </head>
+  <body>
+    <canvas id="canvas" height="300" width="300">Please use an HTML 5 browser</canvas>
+  </body>
+</html>
